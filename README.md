@@ -1,5 +1,5 @@
 # what-happens-when
-对于一些步骤添加了更详细地描述，添加了图解，原仓库 https://github.com/skyline75489/what-happens-when-zh_CN
+对于一些步骤添加了更详细地描述和其流程图，主要的变动为 TLS 原理，Servlet 生命周期和 CDN 过程。原仓库 https://github.com/skyline75489/what-happens-when-zh_CN
 
 因为原仓库是英文版的中文对照无法改动，所以我新建了这个仓库。主要的参考文献——计算机网络：自顶向下方法（原书第七版）
 
@@ -243,7 +243,7 @@ TCP流套接字，对应的参数是 ``AF_INET/AF_INET6`` 和 ``SOCK_STREAM`` �
 * CA 可以验证某一域名的公钥是否是可信的，在 TLS 握手时，服务器会将自己的公钥发送给客户端，客户端使用浏览器预装的 CA 便可以验证该公钥的合法性。
 * 在TLS握手时，服务器首先会向客户端发送使用数字证书认证机构（CA）私钥签发的服务器公开``证书``，证书中包含了网站的公钥和指纹等信息。客户端浏览器会预装权威 CA 的公钥，使用密码散列算法对证书生成散列块，然后使用相应 CA 的公钥解密证书中的指纹，并将结果与散列块对比，若相同则认为当前证书是可信的并提取出证书中的公钥。
 
-**TLS握手过程**
+## TLS握手过程
 
 * 客户端发送一个 ``ClientHello`` 消息到服务器端，消息中同时包含了它的 Transport Layer Security (TLS) 版本，可用的对称加密算法、非对称加密算法、密码散列算法，以及一个客户端不重数。其中不重数是为了防止``连续重放攻击``，试想以下情景：若不包含不重数，若黑客嗅探了 Client 和 Server 之间所有的报文，并且第二天黑客向 Server 发送前一天与 Client 内容和顺序都相同的报文，Server 也将响应一样的报文，此时相同的业务会进行两次，若 Client 下单买了一件上衣，则第二天会再次扣款买一件相同的上衣。
 * 服务器端向客户端返回一个 ``ServerHello`` 消息，消息中包含了服务器端的 TLS 版本，服务器所选择的对称加密算法、非对称加密算法、密码散列算法、一个服务器端不重数，以及使用数字证书认证机构（Certificate Authority，CA）私钥签发的服务器公开证书，客户端会使用``证书``中的公钥加密接下来的握手过程，直到协商生成一个新的对称密钥。
@@ -258,8 +258,7 @@ TCP流套接字，对应的参数是 ``AF_INET/AF_INET6`` 和 ``SOCK_STREAM`` �
 
 ![image](./image/tls.png)
 
-HTTP 协议
--------
+# HTTP 协议
 
 如果浏览器是 Google 出品的，它不会使用 HTTP 协议来获取页面信息，而是会与服务器端发送请求，商讨使用 SPDY 协议。
 
@@ -298,27 +297,27 @@ HTTP/1.1 定义了“关闭连接”的选项 "close"，发送者使用这个选
 
 如果HTML引入了 ``www.google.com`` 域名之外的资源，浏览器会回到上面解析域名那一步，按照下面的步骤往下一步一步执行，请求中的 ``Host`` 头部会变成另外的域名。
 
-HTTP 服务器请求处理
--------------------
+# HTTP 服务器请求处理
+
 HTTPD(HTTP Daemon)在服务器端处理请求/响应。最常见的 HTTPD 有 Linux 上常用的 Apache 和 nginx，以及 Windows 上的 IIS。
 
-* HTTPD 接收请求
+* HTTP 接收请求
 * 服务器把请求拆分为以下几个参数：
     * HTTP 请求方法(``GET``, ``POST``, ``HEAD``, ``PUT``, ``DELETE``, ``CONNECT``, ``OPTIONS``, 或者 ``TRACE``)。直接在地址栏中输入 URL 这种情况下，使用的是 GET 方法
     * 域名：google.com
     * 请求路径/页面：/  (我们没有请求google.com下的指定的页面，因此 / 是默认的路径)
-* 大多数服务器中都内置了Servlet容器用来处理客户端请求，例如Tomcat，JBoss等。
-* 若是使用过SpringMVC搭建过服务器对于HttpServlet类绝对不会陌生，所有的Servlet类都是其子类，需要实现其doGet和doPost方法来处理请求。下面详细介绍Servlet的生命周期
-* 当客户端请求一个特定的Servlet时，服务其首先检查JVM中是否存在该Servlet实例。若是不存在，则先使用类加载器将该类加载到JVM中，然后创建新的实例，调用其init()方法进行初始化。
-* 在确定Servlet实例存在后，服务其调用其service()方法，并以一个request对象和response对象作为参数。需要注意的是，每当一个新的请求到来就新建一个新的线程来执行service()方法。这样服务器就可以并行的处理多个请求。
-* Servlet会话(Session): 因为HTTP协议是无状态的，所以需要Session来跟踪会话并存储会话的信息。当HttpServletRequest类的getSession()方法被调用时，服务器会要求客户端返回其浏览器中Cookie存储的SessionId的值，若为空则创建新的会话。收到SessionId值后服务器在内存中查找该id是否存在，若存在则证明该会话合法（该过程只适用于安全要求较低的网站）。
-* 当服务器处理完请求后（一般是读取或者修改完数据库中的数据），需要将结果返回给用户。因为数据是动态生成的，而返回给用户的HTML页面是静态的，服务器通过一些脚本语言或者前端框架将数据动态写入HTML文档中，然后将其返回给用户。用户浏览器收到该文档后，就开启了解析过程。
+* 大多数服务器中都内置了 Servlet 容器用来处理客户端请求，例如 Tomcat，JBoss 等。
+* 若是使用过 SpringMVC 搭建过服务器对于 HttpServlet 类绝对不会陌生，所有的 Servlet 类都是其子类，需要实现其 doGet 和 doPost 方法来处理请求。下面详细介绍 Servlet 的生命周期：
+* 当客户端请求一个特定的 Servlet 时，服务其首先检查 JVM 中是否存在该 Servlet 实例。若是不存在，则先使用类加载器将该类加载到 JVM 中，然后创建新的实例，调用其 init() 方法进行初始化。
+* 在确定 Servlet 实例存在后，服务其调用其 service()方法，并以一个 request 对象和 response 对象作为参数。需要注意的是，每当一个新的请求到来就新建一个新的线程来执行 service()方法。这样服务器就可以并行的处理多个请求。
+* Servlet 会话(Session): 因为 HTTP 协议是无状态的，所以需要 Session 来跟踪会话并存储会话的信息。当 HttpServletRequest 类的 getSession()方法被调用时，服务器会要求客户端返回其浏览器中 Cookie 存储的 SessionId 的值，若为空则创建新的会话。收到 SessionId 值后服务器在内存中查找该 id 是否存在，若存在则证明该会话合法（该过程只适用于安全要求较低的网站）。
+* 当服务器处理完请求后（一般是读取或者修改完数据库中的数据），需要将结果返回给用户。因为数据是动态生成的，而返回给用户的 HTML 页面是静态的，服务器通过一些脚本语言或者前端框架将数据动态写入 HTML 文档中，然后将其返回给用户。用户浏览器收到该文档后，就开启了解析过程。
 
-内容分发网络（Content Distribution Network, CDN）
--------------------
+# 内容分发网络（Content Distribution Network, CDN）
+
 当客户端收到服务器的 HTTP 响应报文后，若响应码为 200，则首先解析 HTML 文档构建 DOM 树（后文有更详细的过程），当发现其有引入的外部资源时（图片，CSS，JS，视频和音频等等），则向相应地址发送请求获取资源，直到 HTML 页面引入的所有资源全部获取完毕。对于提供资源的服务器，最直接的方法是建立单一的数据中心或文件服务器。但这种方法存在三个问题。首先，如果客户远离数据中心，服务器到客户端分组将跨越许多通信链路并可能通过许多 ISP，会给用户带来恼人的时延；第二是资源可能经过相同的链路发送许多次，浪费了网络带宽增加了流量费用；最后，此方案还存在单点故障的问题。为了应付向分布于全世界的用户分发资源的挑战，CDN 出现了，如今几乎所有的视频流公司都使用 CDN。
 
-* CDN 管理分布在多个地理位置上的服务器，它的每个s服务器存储静态资源的副本，并且试图将每个用户请求定向到一个提供最好的用户体验的 CDN 位置。CDN 可以是 **专用 CDN** ，即它由内容提供商自己所有；另一种可以是 **第三方 CDN** ，它可以给多个内容提供商提供服务。
+* CDN 管理分布在多个地理位置上的服务器，它的每个服务器存储静态资源的副本，并且试图将每个用户请求定向到一个提供最好的用户体验的 CDN 位置。CDN 可以是 **专用 CDN** ，即它由内容提供商自己所有；另一种可以是 **第三方 CDN** ，它可以给多个内容提供商提供服务。
 * 大多数 CDN 利用 DNS 来截获和重定向请求。现考虑以下情景：假设用户访问连接 linuspeng.com/1234，该页面包含视频资源，其由 “video” 以及该视频本身的独特标识符表示，网站使用第三方 CDN 公司 KingCDN 的服务，整个过程将分为以下五个步骤。
 * （1）用户访问 linuspeng.com/1234 的 web 网页。
 * （2）浏览器收到 HTTP 响应报文，假设浏览器构建 DOM 树后发现包含 URL 为 http://video.linuspeng.com/DSH5HJS 的视频资源时，用户主机发送对于 video.linuspeng.com 的 DNS 请求。
@@ -328,8 +327,8 @@ HTTPD(HTTP Daemon)在服务器端处理请求/响应。最常见的 HTTPD 有 Li
 
 
 
-浏览器背后的故事
-----------------
+# 浏览器背后的故事
+
 
 当服务器提供了资源之后（HTML，CSS，JS，图片等），浏览器会执行下面的操作：
 
@@ -337,8 +336,8 @@ HTTPD(HTTP Daemon)在服务器端处理请求/响应。最常见的 HTTPD 有 Li
 * 渲染 —— 构建 DOM 树 -> 渲染 -> 布局 -> 绘制
 
 
-浏览器
-------
+# 浏览器
+
 
 浏览器的功能是从服务器上取回你想要的资源，然后展示在浏览器窗口当中。资源通常是 HTML 文件，也可能是 PDF，图片，或者其他类型的内容。资源的位置通过用户提供的 URI(Uniform Resource Identifier) 来确定。
 
@@ -356,16 +355,16 @@ HTTPD(HTTP Daemon)在服务器端处理请求/响应。最常见的 HTTPD 有 Li
 
 组成浏览器的组件有：
 
-* **用户界面** 用户界面包含了地址栏，前进后退按钮，书签菜单等等，除了请求页面之外所有你看到的内容都是用户界面的一部分
-* **浏览器引擎** 浏览器引擎负责让 UI 和渲染引擎协调工作
-* **渲染引擎** 渲染引擎负责展示请求内容。如果请求的内容是 HTML，渲染引擎会解析 HTML 和 CSS，然后将内容展示在屏幕上
-* **网络组件** 网络组件负责网络调用，例如 HTTP 请求等，使用一个平台无关接口，下层是针对不同平台的具体实现
-* **UI后端** UI 后端用于绘制基本 UI 组件，例如下拉列表框和窗口。UI 后端暴露一个统一的平台无关的接口，下层使用操作系统的 UI 方法实现
-* **Javascript 引擎** Javascript 引擎用于解析和执行 Javascript 代码
-* **数据存储** 数据存储组件是一个持久层。浏览器可能需要在本地存储各种各样的数据，例如 Cookie 等。浏览器也需要支持诸如 localStorage，IndexedDB，WebSQL 和 FileSystem 之类的存储机制
+* **用户界面：** 用户界面包含了地址栏，前进后退按钮，书签菜单等等，除了请求页面之外所有你看到的内容都是用户界面的一部分
+* **浏览器引擎：** 浏览器引擎负责让 UI 和渲染引擎协调工作
+* **渲染引擎：** 渲染引擎负责展示请求内容。如果请求的内容是 HTML，渲染引擎会解析 HTML 和 CSS，然后将内容展示在屏幕上
+* **网络组件：** 网络组件负责网络调用，例如 HTTP 请求等，使用一个平台无关接口，下层是针对不同平台的具体实现
+* **UI后端：** UI 后端用于绘制基本 UI 组件，例如下拉列表框和窗口。UI 后端暴露一个统一的平台无关的接口，下层使用操作系统的 UI 方法实现
+* **Javascript 引擎：** Javascript 引擎用于解析和执行 Javascript 代码
+* **数据存储：** 数据存储组件是一个持久层。浏览器可能需要在本地存储各种各样的数据，例如 Cookie 等。浏览器也需要支持诸如 localStorage，IndexedDB，WebSQL 和 FileSystem 之类的存储机制
 
-HTML 解析
----------
+# HTML 解析
+
 
 浏览器渲染引擎从网络层取得请求的文档，一般情况下文档会分成8kB大小的分块传输。
 
@@ -373,7 +372,7 @@ HTML 解析器的主要工作是对 HTML 文档进行解析，生成解析树。
 
 解析树是以 DOM 元素以及属性为节点的树。DOM是文档对象模型(Document Object Model)的缩写，它是 HTML 文档的对象表示，同时也是 HTML 元素面向外部(如Javascript)的接口。树的根部是"Document"对象。整个 DOM 和 HTML 文档几乎是一对一的关系。
 
-**解析算法**
+## 解析算法
 
 HTML不能使用常见的自顶向下或自底向上方法来进行分析。主要原因有以下几点:
 
@@ -391,15 +390,13 @@ HTML不能使用常见的自顶向下或自底向上方法来进行分析。主�
 
 注意解析 HTML 网页时永远不会出现“无效语法（Invalid Syntax）”错误，浏览器会修复所有错误内容，然后继续解析。
 
-CSS 解析
----------
+##CSS 解析
 
-* 根据 `CSS词法和句法`_ 分析CSS文件和 ``<style>`` 标签包含的内容以及 `style` 属性的值
+* 根据 `CSS词法和句法` 分析CSS文件和 ``<style>`` 标签包含的内容以及 `style` 属性的值
 * 每个CSS文件都被解析成一个样式表对象（``StyleSheet object``），这个对象里包含了带有选择器的CSS规则，和对应CSS语法的对象
 * CSS解析器可能是自顶向下的，也可能是使用解析器生成器生成的自底向上的解析器
 
-页面渲染
---------
+## 页面渲染
 
 * 通过遍历DOM节点树创建一个“Frame 树”或“渲染树”，并计算每个节点的各个CSS样式值
 * 通过累加子节点的宽度，该节点的水平内边距(padding)、边框(border)和外边距(margin)，自底向上的计算"Frame 树"中每个节点的首选(preferred)宽度
@@ -414,17 +411,13 @@ CSS 解析
 * 计算出各个层的最终位置，一组命令由 Direct3D/OpenGL发出，GPU命令缓冲区清空，命令传至GPU并异步渲染，帧被送到Window Server。
 
 
-GPU 渲染
---------
+## GPU 渲染
+
 
 * 在渲染过程中，图形处理层可能使用通用用途的 ``CPU``，也可能使用图形处理器 ``GPU``
 * 当使用 ``GPU`` 用于图形渲染时，图形驱动软件会把任务分成多个部分，这样可以充分利用 ``GPU`` 强大的并行计算能力，用于在渲染过程中进行大量的浮点计算。
 
-Window Server
--------------
-
-后期渲染与用户引发的处理
-------------------------
+# 后期渲染与用户引发的处理
 
 渲染结束后，浏览器根据某些时间机制运行JavaScript代码(比如Google Doodle动画)或与用户交互(在搜索栏输入关键字获得搜索建议)。类似Flash和Java的插件也会运行，尽管Google主页里没有。这些脚本可以触发网络请求，也可能改变网页的内容和布局，产生又一轮渲染与绘制。
 
@@ -436,14 +429,24 @@ Window Server
 
 
 
-.. _`Creative Commons Zero`: https://creativecommons.org/publicdomain/zero/1.0/
-.. _`CSS词法和句法`: http://www.w3.org/TR/CSS2/grammar.html
-.. _`Punycode`: https://en.wikipedia.org/wiki/Punycode
-.. _`以太网`: http://en.wikipedia.org/wiki/IEEE_802.3
-.. _`WiFi`: https://en.wikipedia.org/wiki/IEEE_802.11
-.. _`蜂窝数据网络`: https://en.wikipedia.org/wiki/Cellular_data_communication_protocol
-.. _`analog-to-digital converter`: https://en.wikipedia.org/wiki/Analog-to-digital_converter
-.. _`网络节点`: https://en.wikipedia.org/wiki/Computer_network#Network_nodes
-.. _`不同的操作系统有所不同` : https://en.wikipedia.org/wiki/Hosts_%28file%29#Location_in_the_file_system
-.. _`downgrade attack`: http://en.wikipedia.org/wiki/SSL_stripping
-.. _`OSI 模型`: https://en.wikipedia.org/wiki/OSI_model
+Creative Commons Zero: https://creativecommons.org/publicdomain/zero/1.0/
+
+CSS词法和句法: http://www.w3.org/TR/CSS2/grammar.html
+
+Punycode: https://en.wikipedia.org/wiki/Punycode
+
+以太网: http://en.wikipedia.org/wiki/IEEE_802.3
+
+WiFi: https://en.wikipedia.org/wiki/IEEE_802.11
+
+蜂窝数据网络: https://en.wikipedia.org/wiki/Cellular_data_communication_protocol
+
+analog-to-digital converter: https://en.wikipedia.org/wiki/Analog-to-digital_converter
+
+网络节点: https://en.wikipedia.org/wiki/Computer_network#Network_nodes
+
+不同的操作系统有所不同 : https://en.wikipedia.org/wiki/Hosts_%28file%29#Location_in_the_file_system
+
+downgrade attack: http://en.wikipedia.org/wiki/SSL_stripping
+
+OSI 模型: https://en.wikipedia.org/wiki/OSI_model
